@@ -395,6 +395,7 @@ class BotFrontend:
             BotCommand(command="clear", description='[CHAT...] 清除索引'),
             BotCommand(command="find_chat_id", description='KEYWORD 根据关键词获取聊天 id'),
             BotCommand(command="refresh_chat_names", description='刷新对话名称缓存'),
+            BotCommand(command="get_group_members", description='获取群成员列表'),
         ]
         commands = [
             BotCommand(command="random", description='随机返回一条已索引消息'),
