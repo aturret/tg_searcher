@@ -41,11 +41,14 @@ def get_share_id(chat_id: int) -> int:
     return resolve_id(chat_id)[0]
 
 
-def format_entity_name(entity):
+def format_entity_name(entity, format_type: str = 'username') -> str:
     if isinstance(entity, User):
-        first_name = entity.first_name or ''
-        last_name = entity.last_name or ''
-        return (first_name + ' ' + last_name).strip()
+        if format_type == 'username':
+            return entity.username or 'undefined username'
+        elif format_type == 'fullname':
+            first_name = entity.first_name or ''
+            last_name = entity.last_name or ''
+            return (first_name + ' ' + last_name).strip()
     elif isinstance(entity, Chat) or isinstance(entity, Channel):
         return entity.title
     else:
