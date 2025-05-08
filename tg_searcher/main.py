@@ -26,7 +26,7 @@ async def a_main():
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
 
-    full_config = yaml.safe_load(Path(args.config).read_text())
+    full_config = yaml.safe_load(Path(args.config).read_text(encoding='utf-8'))
     common_config = CommonBotConfig(full_config['common'])
 
     sessions: dict[str, ClientSession] = dict()
