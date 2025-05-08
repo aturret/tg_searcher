@@ -9,3 +9,5 @@ __pycache__
 .envrc
 .pdm-python
 .pdm-build
+/config/
+/cache/
