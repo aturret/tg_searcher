@@ -11,6 +11,8 @@ from telethon import TelegramClient, events, Button
 from telethon.tl.types import BotCommand, BotCommandScopePeer, BotCommandScopeDefault
 from telethon.tl.custom import Message as TgMessage
 from telethon.tl.functions.bots import SetBotCommandsRequest
+from telethon.tl.functions.channels import GetParticipantsRequest
+from telethon.tl.types import ChannelParticipantsSearch
 import telethon.errors.rpcerrorlist as rpcerrorlist
 from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -38,6 +40,7 @@ class BotFrontendConfig:
 
         self.private_mode: bool = kw.get('private_mode', False)
         self.private_whitelist: Set[int] = set(kw.get('private_whitelist', []))
+        self.private_whitelist_groups: Set[int] = set(kw.get('private_whitelist_groups', []))
         self.private_whitelist.add(self.admin)
 
 
@@ -116,6 +119,15 @@ class BotFrontend:
 
         # prevent chat with bot being indexed
         self.backend.excluded_chats.add((await self.bot.get_me()).id)
+
+        # add group members into whitelist
+        if self._cfg.private_mode:
+            for group_id in self._cfg.private_whitelist_groups:
+                try:
+                    group_members_id = await self._get_all_group_members_id(group_id)
+                    await self._add_members_id_into_whitelist(group_members_id)
+                except Exception as e:
+                    self._logger.error(f'获取群成员失败: {e}')
 
         try:
             msg_head = 'bot 初始化完成\n\n'
@@ -324,7 +336,8 @@ class BotFrontend:
                     try:
                         await prog_msg.edit(prog_text, parse_mode='html')
                     except rpcerrorlist.FloodWaitError:
-                        self._logger.info(f'FloodWaitError when trying to edit message of download_history ({cnt=}), ignore')
+                        self._logger.info(
+                            f'FloodWaitError when trying to edit message of download_history ({cnt=}), ignore')
                         pass
                 else:
                     prog_msg = await event.reply(prog_text, parse_mode='html')
@@ -400,7 +413,6 @@ class BotFrontend:
             BotCommand(command="clear", description='[CHAT...] 清除索引'),
             BotCommand(command="find_chat_id", description='KEYWORD 根据关键词获取聊天 id'),
             BotCommand(command="refresh_chat_names", description='刷新对话名称缓存'),
-            BotCommand(command="get_group_members", description='获取群成员列表'),
         ]
         commands = [
             BotCommand(command="random", description='随机返回一条已索引消息'),
@@ -448,3 +460,31 @@ class BotFrontend:
                 Button.inline(next_text, next_page),
             ]
         ]
+
+    async def _get_all_group_members_id(self, group_id: int) -> List[int]:
+        try:
+            all_participants = []
+            offset = 0
+            group = await self.backend.session.get_entity(group_id)
+            while True:
+                participants = await self.backend.session(GetParticipantsRequest(
+                    channel=group,
+                    filter=ChannelParticipantsSearch(''),
+                    offset=offset,
+                    limit=100,
+                    hash=0
+                ))
+                if not participants.users:
+                    break
+                all_participants.extend(participants.users)
+                offset += len(participants.users)
+            print(f'Total members fetched: {len(all_participants)}')
+            group_members_id = [member.id for member in all_participants]
+            return group_members_id
+        except Exception as e:
+            self._logger.error(f'获取群成员失败: {e}')
+            return []
+
+    async def _add_members_id_into_whitelist(self, members_id: List[int]):
+        for member_id in members_id:
+            self._cfg.private_whitelist.add(member_id)
