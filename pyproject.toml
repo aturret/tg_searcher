@@ -15,6 +15,9 @@ dependencies = [
     "pyyaml>=6.0.1",
     "redis>=5.0.3",
     "whoosh>=2.7.4",
+    "aioboto3>=14.3.0",
+    "aiofiles>=24.1.0",
+    "pydantic>=2.11.4",
 ]
 requires-python = "<4.0,>=3.9"
 license = {text = "MIT"}
