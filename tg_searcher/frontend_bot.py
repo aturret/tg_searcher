@@ -463,23 +463,13 @@ class BotFrontend:
 
     async def _get_all_group_members_id(self, group_id: int) -> List[int]:
         try:
-            all_participants = []
-            offset = 0
             group = await self.backend.session.get_entity(group_id)
-            while True:
-                participants = await self.backend.session(GetParticipantsRequest(
-                    channel=group,
-                    filter=ChannelParticipantsSearch(''),
-                    offset=offset,
-                    limit=100,
-                    hash=0
-                ))
-                if not participants.users:
-                    break
-                all_participants.extend(participants.users)
-                offset += len(participants.users)
-            print(f'Total members fetched: {len(all_participants)}')
-            group_members_id = [member.id for member in all_participants]
+            participants = await self.backend.session.get_participants(
+                group,
+                aggressive=True,
+            )
+            print(f'Total members fetched: {len(participants)}')
+            group_members_id = [member.id for member in participants]
             return group_members_id
         except Exception as e:
             self._logger.error(f'获取群成员失败: {e}')
