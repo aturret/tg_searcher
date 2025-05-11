@@ -108,6 +108,22 @@ class AWSClient:
             except Exception as e:
                 raise RuntimeError(f"Failed to upload file to S3: {e}")
 
+    async def check_message_exist(self, chat_id: int, message_id: int, table_name: str = None) -> bool:
+        if table_name is None:
+            table_name = self._cfg.dynamo_table_name
+
+        async with self._session.resource("dynamodb", region_name=self._cfg.region_name) as dynamodb:
+            table = await dynamodb.Table(table_name)
+            response = await table.get_item(
+                Key={
+                    "chatId": chat_id,
+                    "messageId": message_id
+                }
+            )
+            if 'Item' in response:
+                self._logger.info(f"Message {message_id} in chat {chat_id} already exists in DynamoDB.")
+                return True
+
     async def put_item_to_dynamo(self, table_name: str = None, item: dict = None) -> None:
         if item is None:
             raise ValueError("Item cannot be None")

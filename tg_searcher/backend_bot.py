@@ -239,15 +239,21 @@ class BackendBot:
                     self._logger.info(f'Delete message {url}')
                     self._indexer.delete(url=url)
 
-    async def cloud_upload_message(self, event):
+    async def cloud_upload_message(self, event, skip_existing: bool = True):
         if not self._cloud_client:
             self._logger.warning('Cloud storage is not configured, skipping upload')
             return
         try:
             message = event.message if isinstance(event, events.NewMessage.Event) else event
-
             chat_id = get_share_id(event.chat_id)
             message_id = message.id
+            if await self._cloud_client.check_message_exist(
+                    chat_id=chat_id,
+                    message_id=message_id
+            ) and skip_existing:
+                self._logger.info(f'Message {message_id} already exists in cloud storage, skipping upload')
+                return
+
             text = message.text
             timestamp = message.date.timestamp()
             sender = message.sender
