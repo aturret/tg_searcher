@@ -231,6 +231,17 @@ class BotFrontend:
                 await self._download_history(event, chat_id, min_id, max_id, cloud=args.cloud)
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
 
+        elif text.startswith('/archive_chat'):
+            args = self.chat_ids_parser.parse_args(shlex.split(text)[1:])
+            chat_ids = await self._chat_ids_from_args(args.chats) or self._query_selected_chat(event)
+            if not chat_ids:
+                await event.reply(f'错误：请至少指定一个会话')
+                return
+            for chat_id in chat_ids:
+                self._logger.info(f'archive {chat_id}')
+                await self._download_history(event, chat_id, 1, 1 << 31 - 1, cloud=True, skip_indexing=True)
+                self._logger.info(f'succeed archiving {chat_id}')
+
         elif text.startswith('/monitor_chat'):
             args = self.chat_ids_parser.parse_args(shlex.split(text)[1:])
             chat_ids = await self._chat_ids_from_args(args.chats) or self._query_selected_chat(event)
@@ -320,9 +331,9 @@ class BotFrontend:
             self._redis.set(f'{self.id}:query_chats:{event.chat_id}:{msg.id}', ','.join(map(str, chats)))
 
     async def _download_history(self, event: events.NewMessage.Event, chat_id: int, min_id: int, max_id: int,
-                                cloud: bool = False):
+                                cloud: bool = False, skip_indexing: bool = False):
         chat_html = await self.backend.format_dialog_html(chat_id)
-        if min_id == 1 and max_id == 1 << 31 - 1 and not self.backend.is_empty(chat_id):
+        if min_id == 1 and max_id == 1 << 31 - 1 and not self.backend.is_empty(chat_id) and not skip_indexing:
             # TODO: automatically handle message duplication
             await event.reply(
                 f'错误: {chat_html} 的索引非空，下载历史会导致索引重复消息，'
@@ -349,7 +360,8 @@ class BotFrontend:
                     prog_msg = await event.reply(prog_text, parse_mode='html')
             cnt += 1
 
-        await self.backend.download_history(chat_id, min_id, max_id, cloud=cloud, call_back=call_back)
+        await self.backend.download_history(chat_id, min_id, max_id, cloud=cloud, call_back=call_back,
+                                            skip_indexing=skip_indexing)
         await event.reply(f'{chat_html} 下载完成，共计 {cnt} 条消息', parse_mode='html')
         if prog_msg:
             await prog_msg.delete()
@@ -415,6 +427,7 @@ class BotFrontend:
             BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [--cloud] [CHAT...] '
                                                             '下载并索引会话的历史消息，并将其加入监听列表。'
                                                             '如果添加 --cloud 则会将消息上传到云端。'),
+            BotCommand(command="archive_chat", description='[CHAT...] 将会话的消息上传到云端'),
             BotCommand(command="monitor_chat", description='CHAT... 将会话加入监听列表'),
             BotCommand(command="stat", description='查询后端索引状态'),
             BotCommand(command="clear", description='[CHAT...] 清除索引'),

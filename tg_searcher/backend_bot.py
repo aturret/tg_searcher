@@ -79,7 +79,7 @@ class BackendBot:
             return self._indexer.ix.is_empty()
 
     async def download_history(self, chat_id: int, min_id: int, max_id: int, cloud: bool = False,
-                               call_back=None):
+                               call_back=None, skip_indexing: bool = False):
         share_id = get_share_id(chat_id)
         self._logger.info(f'Downloading history from {share_id} ({min_id=}, {max_id=})')
         self.monitored_chats.add(share_id)
@@ -87,7 +87,7 @@ class BackendBot:
         async for tg_message in self.session.iter_messages(chat_id, min_id=min_id, max_id=max_id):
             if cloud:
                 await self.cloud_upload_message(tg_message)
-            if msg_text := self._extract_text(tg_message):
+            if msg_text := self._extract_text(tg_message) and not skip_indexing:
                 url = f'https://t.me/c/{share_id}/{tg_message.id}'
                 sender = await self._get_sender_name(tg_message)
                 msg = IndexMsg(
@@ -98,8 +98,8 @@ class BackendBot:
                     sender=sender,
                 )
                 msg_list.append(msg)
-                if call_back:
-                    await call_back(tg_message.id)
+            if call_back:
+                await call_back(tg_message.id)
         self._logger.info(f'fetching history from {share_id} complete, start writing index')
         writer = self._indexer.ix.writer()
         for msg in msg_list:
@@ -281,6 +281,7 @@ class BackendBot:
                 telegram_message.is_forward = True
 
             # upload media to cloud storage
+            filename = ""
             if message.media:
                 media_type = 'unknown'
                 if isinstance(message.media, MessageMediaPhoto):
@@ -293,6 +294,7 @@ class BackendBot:
                         media_type = 'video'
                     else:
                         media_type = 'document'
+                        # TODO get filename for real file
                 io_object = BytesIO()
                 await message.download_media(file=io_object)
                 io_object.seek(0)
