@@ -95,6 +95,11 @@ class BotFrontend:
         self.download_arg_parser = ArgumentParser()
         self.download_arg_parser.add_argument('--min', type=int)
         self.download_arg_parser.add_argument('--max', type=int)
+        self.download_arg_parser.add_argument(
+            "--cloud",
+            action="store_true",
+            help="Enable cloud upload after download"
+        )
         self.download_arg_parser.add_argument('chats', type=str, nargs='*')
 
         self.chat_ids_parser = ArgumentParser()
@@ -223,7 +228,7 @@ class BotFrontend:
                 return
             for chat_id in chat_ids:
                 self._logger.info(f'start downloading history of {chat_id} (min={min_id}, max={max_id})')
-                await self._download_history(event, chat_id, min_id, max_id)
+                await self._download_history(event, chat_id, min_id, max_id, cloud=args.cloud)
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
 
         elif text.startswith('/monitor_chat'):
@@ -314,7 +319,8 @@ class BotFrontend:
         if chats:
             self._redis.set(f'{self.id}:query_chats:{event.chat_id}:{msg.id}', ','.join(map(str, chats)))
 
-    async def _download_history(self, event: events.NewMessage.Event, chat_id: int, min_id: int, max_id: int):
+    async def _download_history(self, event: events.NewMessage.Event, chat_id: int, min_id: int, max_id: int,
+                                cloud: bool = False):
         chat_html = await self.backend.format_dialog_html(chat_id)
         if min_id == 1 and max_id == 1 << 31 - 1 and not self.backend.is_empty(chat_id):
             # TODO: automatically handle message duplication
@@ -343,7 +349,7 @@ class BotFrontend:
                     prog_msg = await event.reply(prog_text, parse_mode='html')
             cnt += 1
 
-        await self.backend.download_history(chat_id, min_id, max_id, call_back)
+        await self.backend.download_history(chat_id, min_id, max_id, cloud=cloud, call_back=call_back)
         await event.reply(f'{chat_html} 下载完成，共计 {cnt} 条消息', parse_mode='html')
         if prog_msg:
             await prog_msg.delete()
@@ -406,8 +412,9 @@ class BotFrontend:
             exit(-1)
 
         admin_commands = [
-            BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [CHAT...] '
-                                                            '下载并索引会话的历史消息，并将其加入监听列表'),
+            BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [--cloud] [CHAT...] '
+                                                            '下载并索引会话的历史消息，并将其加入监听列表。'
+                                                            '如果添加 --cloud 则会将消息上传到云端。'),
             BotCommand(command="monitor_chat", description='CHAT... 将会话加入监听列表'),
             BotCommand(command="stat", description='查询后端索引状态'),
             BotCommand(command="clear", description='[CHAT...] 清除索引'),

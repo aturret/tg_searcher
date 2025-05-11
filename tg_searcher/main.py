@@ -7,6 +7,7 @@ import asyncio
 
 from telethon.client import TelegramClient
 
+from .aws import AWSConfig, AWSClient
 from .frontend_bot import BotFrontend, BotFrontendConfig
 from .backend_bot import BackendBot, BackendBotConfig
 from .session import ClientSession
@@ -28,6 +29,12 @@ async def a_main():
 
     full_config = yaml.safe_load(Path(args.config).read_text(encoding='utf-8'))
     common_config = CommonBotConfig(full_config['common'])
+    cloud_config = full_config['cloud']
+    aws_config = AWSConfig(**cloud_config['aws'])
+
+    cloud_client = AWSClient(aws_config)
+    await cloud_client.create_s3_bucket()
+    await cloud_client.create_dynamo_table()
 
     sessions: dict[str, ClientSession] = dict()
     backends: dict[str, BackendBot] = dict()
@@ -50,7 +57,7 @@ async def a_main():
         backend_id = backend_yaml['id']
         session_name = backend_yaml['use_session']
         backend_config = BackendBotConfig(**backend_yaml.get('config', {}))
-        backend = BackendBot(common_config, backend_config, sessions[session_name], args.clear, backend_id)
+        backend = BackendBot(common_config, backend_config, cloud_client, sessions[session_name], args.clear, backend_id)
         async_tasks.append(backend.start())
         if backend_id not in backends:
             backends[backend_id] = backend
