@@ -281,7 +281,7 @@ class BackendBot:
                 telegram_message.is_forward = True
 
             # upload media to cloud storage
-            filename = ""
+            file_name = ""
             if message.media:
                 media_type = 'unknown'
                 if isinstance(message.media, MessageMediaPhoto):
@@ -294,12 +294,14 @@ class BackendBot:
                         media_type = 'video'
                     else:
                         media_type = 'document'
+                        file_name = message.file.name
                         # TODO get filename for real file
                 io_object = BytesIO()
                 await message.download_media(file=io_object)
                 io_object.seek(0)
                 extension = message.file.ext if message.file else ''
-                file_name = f'{chat_id}_{message_id}_{int(timestamp)}{extension}'
+                if file_name == "":
+                    file_name = f'{chat_id}_{message_id}_{int(timestamp)}{extension}'
                 media_key = await self._cloud_client.upload_to_s3(
                     file_obj=io_object,
                     s3_prefix=f'{chat_id}',
