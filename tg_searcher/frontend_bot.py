@@ -100,6 +100,11 @@ class BotFrontend:
             action="store_true",
             help="Enable cloud upload after download"
         )
+        self.download_arg_parser.add_argument(
+            "--archive",
+            action="store_true",
+            help="Enable cloud upload after download"
+        )
         self.download_arg_parser.add_argument('chats', type=str, nargs='*')
 
         self.chat_ids_parser = ArgumentParser()
@@ -223,24 +228,18 @@ class BotFrontend:
             min_id = args.min or 1
             max_id = args.max or 1 << 31 - 1
             chat_ids = await self._chat_ids_from_args(args.chats) or self._query_selected_chat(event)
+            cloud = args.cloud
+            skip_indexing = False
+            if args.archive:
+                cloud = True
+                skip_indexing = True
             if not chat_ids:
                 await event.reply(f'错误：请至少指定一个会话')
                 return
             for chat_id in chat_ids:
                 self._logger.info(f'start downloading history of {chat_id} (min={min_id}, max={max_id})')
-                await self._download_history(event, chat_id, min_id, max_id, cloud=args.cloud)
+                await self._download_history(event, chat_id, min_id, max_id, cloud=cloud, skip_indexing=skip_indexing)
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
-
-        elif text.startswith('/archive_chat'):
-            args = self.chat_ids_parser.parse_args(shlex.split(text)[1:])
-            chat_ids = await self._chat_ids_from_args(args.chats) or self._query_selected_chat(event)
-            if not chat_ids:
-                await event.reply(f'错误：请至少指定一个会话')
-                return
-            for chat_id in chat_ids:
-                self._logger.info(f'archive {chat_id}')
-                await self._download_history(event, chat_id, 1, 1 << 31 - 1, cloud=True, skip_indexing=True)
-                self._logger.info(f'succeed archiving {chat_id}')
 
         elif text.startswith('/monitor_chat'):
             args = self.chat_ids_parser.parse_args(shlex.split(text)[1:])
@@ -424,10 +423,10 @@ class BotFrontend:
             exit(-1)
 
         admin_commands = [
-            BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [--cloud] [CHAT...] '
+            BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [--cloud] [--archive] [CHAT...] '
                                                             '下载并索引会话的历史消息，并将其加入监听列表。'
-                                                            '如果添加 --cloud 则会将消息上传到云端。'),
-            BotCommand(command="archive_chat", description='[CHAT...] 将会话的消息上传到云端'),
+                                                            '如果添加 --cloud 则会同时将消息上传到云端。'
+                                                            '如果添加 --archive 则会无视当前索引情况仅将消息上传到云端'),
             BotCommand(command="monitor_chat", description='CHAT... 将会话加入监听列表'),
             BotCommand(command="stat", description='查询后端索引状态'),
             BotCommand(command="clear", description='[CHAT...] 清除索引'),
