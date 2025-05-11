@@ -9,11 +9,11 @@ from tg_searcher.common import get_logger
 DEFAULT_TABLE_NAME = "tg_message_db"
 DEFAULT_KEY_SCHEMA = [
     {"AttributeName": "chatId", "KeyType": "HASH"},
-    {"AttributeName": "timestamp", "KeyType": "RANGE"},
+    {"AttributeName": "messageId", "KeyType": "RANGE"},
 ]
 DEFAULT_ATTRIBUTE_DEFINITIONS = [
     {"AttributeName": "chatId", "AttributeType": "N"},
-    {"AttributeName": "timestamp", "AttributeType": "N"},
+    {"AttributeName": "messageId", "AttributeType": "N"},
 ]
 
 
@@ -22,7 +22,6 @@ class AWSConfig:
         self.region_name = kw.get('region_name', None)
         self.s3_bucket_name = kw.get('s3_bucket_name', None)
         self.dynamo_table_name = kw.get('dynamo_table_name', DEFAULT_TABLE_NAME)
-
 
 
 class AWSClient:
@@ -104,6 +103,7 @@ class AWSClient:
                     await s3.upload_fileobj(file_obj, self._cfg.s3_bucket_name, f"{s3_prefix}/{file_name}")
                 elif file_path:
                     await s3.upload_file(file_path, self._cfg.s3_bucket_name, f"{s3_prefix}/{file_name}")
+                self._logger.info(f"File {file_name} uploaded to S3 bucket {self._cfg.s3_bucket_name} successfully.")
                 return f"{self._cfg.s3_bucket_name}/{s3_prefix}/{file_name}"
             except Exception as e:
                 raise RuntimeError(f"Failed to upload file to S3: {e}")
@@ -118,9 +118,10 @@ class AWSClient:
             try:
                 await table.put_item(
                     Item=item,
-                    ConditionExpression="attribute_not_exists(chat_id) AND  attribute_not_exists(#ts)",
-                    ExpressionAttributeNames={"#ts": "timestamp"}
+                    ConditionExpression="attribute_not_exists(chatId) AND attribute_not_exists(messageId)",
                 )
+                self._logger.info(
+                    f"Item {item['chatId'] + item['messageId']} put to DynamoDB table {table_name} successfully.")
             except Exception as e:
                 raise RuntimeError(f"Failed to put item to DynamoDB: {e}")
 
