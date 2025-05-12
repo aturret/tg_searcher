@@ -251,7 +251,7 @@ class BackendBot:
                     chat_id=chat_id,
                     message_id=message_id
             ) and skip_existing:
-                self._logger.info(f'Message {message_id} already exists in cloud storage, skipping upload')
+                self._logger.info(f'Message {chat_id}-{message_id} already exists in cloud storage, skipping upload')
                 return
 
             text = message.text
