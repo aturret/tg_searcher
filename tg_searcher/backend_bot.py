@@ -283,7 +283,7 @@ class BackendBot:
                 telegram_message.reply_to = message.reply_to.reply_to_msg_id
 
             if message.fwd_from:
-                telegram_message.fwd_from = message.fwd_from.from_id
+                telegram_message.fwd_from = message.fwd_from.from_id.user_id
                 telegram_message.is_forward = True
 
             # upload media to cloud storage
