@@ -137,7 +137,7 @@ class AWSClient:
                     ConditionExpression="attribute_not_exists(chatId) AND attribute_not_exists(messageId)",
                 )
                 self._logger.info(
-                    f"Item {item['chatId'] + item['messageId']} put to DynamoDB table {table_name} successfully.")
+                    f"Item {item['chatId']}-{item['messageId']} put to DynamoDB table {table_name} successfully.")
             except Exception as e:
                 raise RuntimeError(f"Failed to put item to DynamoDB: {e}")
 
