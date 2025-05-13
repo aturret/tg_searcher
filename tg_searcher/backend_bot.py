@@ -11,7 +11,8 @@ from telethon.tl.types import (
     MessageMediaPhoto,
     MessageMediaDocument,
     DocumentAttributeAudio,
-    DocumentAttributeVideo
+    DocumentAttributeVideo,
+    PeerChannel
 )
 
 from .indexer import Indexer, IndexMsg
@@ -283,9 +284,10 @@ class BackendBot:
                 telegram_message.reply_to = message.reply_to.reply_to_msg_id
 
             if message.fwd_from:
-                fwd_from = message.fwd_from.from_id.user_id
-                if not isinstance(fwd_from, int):
-                    fwd_from = 0
+                if isinstance(message.fwd_from.from_id, PeerChannel):
+                    fwd_from = message.fwd_from.from_id.channel_id
+                else:
+                    fwd_from = message.fwd_from.from_id.user_id
                 telegram_message.fwd_from = fwd_from
                 telegram_message.is_forward = True
 
@@ -304,7 +306,6 @@ class BackendBot:
                     else:
                         media_type = 'document'
                         file_name = message.file.name
-                        # TODO get filename for real file
                 io_object = BytesIO()
                 await message.download_media(file=io_object)
                 io_object.seek(0)
