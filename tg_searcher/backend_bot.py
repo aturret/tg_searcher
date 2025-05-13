@@ -192,11 +192,11 @@ class BackendBot:
             return ''
 
     @staticmethod
-    async def _get_sender_name(message: TgMessage, format_type: str = 'username') -> str:
+    async def _get_sender_name(message: TgMessage) -> str:
         # empty string will be returned if no sender
         sender = await message.get_sender()
         if isinstance(sender, User):
-            return format_entity_name(sender, format_type)
+            return format_entity_name(sender)
         else:
             return ''
 
@@ -259,7 +259,7 @@ class BackendBot:
             timestamp = message.date.timestamp()
             sender = message.sender
             user_id = sender.id if sender else 0
-            username = sender.username if sender else 'undefined'
+            username = sender.username if sender else ''
             first_name = sender.first_name if sender else ''
             last_name = sender.last_name if sender else ''
             is_bot = sender.bot if sender else False

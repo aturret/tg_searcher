@@ -41,11 +41,11 @@ def get_share_id(chat_id: int) -> int:
     return resolve_id(chat_id)[0]
 
 
-def format_entity_name(entity, format_type: str = 'username') -> str:
+def format_entity_name(entity) -> str:
     if isinstance(entity, User):
-        if format_type == 'username':
-            return entity.username or 'undefined username'
-        elif format_type == 'fullname':
+        if entity.username:
+            return entity.username
+        else:
             first_name = entity.first_name or ''
             last_name = entity.last_name or ''
             return (first_name + ' ' + last_name).strip()
