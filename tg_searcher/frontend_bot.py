@@ -346,7 +346,7 @@ class BotFrontend:
             self._redis.set(f'{self.id}:query_chats:{event.chat_id}:{msg.id}', ','.join(map(str, chats)))
 
     async def _download_history(self, event: events.NewMessage.Event, chat_id: int, min_id: int, max_id: int,
-                                cloud: bool = False, skip_indexing: bool = False, skip_existing: bool = False):
+                                cloud: bool = False, skip_indexing: bool = False, skip_existing: bool = True):
         chat_html = await self.backend.format_dialog_html(chat_id)
         if min_id == 1 and max_id == 1 << 31 - 1 and not self.backend.is_empty(chat_id) and not skip_indexing:
             # TODO: automatically handle message duplication

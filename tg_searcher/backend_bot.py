@@ -79,8 +79,16 @@ class BackendBot:
         else:
             return self._indexer.ix.is_empty()
 
-    async def download_history(self, chat_id: int, min_id: int, max_id: int, cloud: bool = False,
-                               call_back=None, skip_indexing: bool = False, skip_existing: bool = True):
+    async def download_history(
+            self,
+            chat_id: int,
+            min_id: int,
+            max_id: int,
+            cloud: bool = False,
+            call_back=None,
+            skip_indexing: bool = False,
+            skip_existing: bool = True
+    ):
         share_id = get_share_id(chat_id)
         self._logger.info(f'Downloading history from {share_id} ({min_id=}, {max_id=})')
         self.monitored_chats.add(share_id)

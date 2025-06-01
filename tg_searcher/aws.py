@@ -150,8 +150,7 @@ class AWSClient:
             table = await dynamodb.Table(table_name)
             try:
                 await table.put_item(
-                    Item=item,
-                    ConditionExpression="attribute_not_exists(chatId) AND attribute_not_exists(messageId)",
+                    Item=item
                 )
                 self._logger.info(
                     f"Item {item['chatId']}-{item['messageId']} put to DynamoDB table {table_name} successfully.")
