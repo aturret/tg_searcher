@@ -258,12 +258,14 @@ class BackendBot:
             message = event.message if isinstance(event, events.NewMessage.Event) else event
             chat_id = get_share_id(event.chat_id)
             message_id = message.id
-            if await self._cloud_client.check_message_exist(
-                    chat_id=chat_id,
-                    message_id=message_id
-            ) and skip_existing:
-                self._logger.info(f'Message {chat_id}-{message_id} already exists in cloud storage, skipping upload')
-                return
+            if skip_existing:
+                if await self._cloud_client.check_message_exist(
+                        chat_id=chat_id,
+                        message_id=message_id
+                ):
+                    self._logger.info(
+                        f'Message {chat_id}-{message_id} already exists in cloud storage, skipping upload')
+                    return
 
             text = message.text
             timestamp = message.date.timestamp()
