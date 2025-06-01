@@ -228,6 +228,8 @@ class BackendBot:
                 url = f'https://t.me/c/{share_id}/{event.id}'
                 self._logger.info(f'Update message {url} to: "{brief_content(msg_text)}"')
                 self._indexer.update(url=url, content=msg_text)
+                if self._cfg.cloudstorage:
+                    await self.cloud_upload_message(event, skip_existing=False)
 
         @self.session.on(events.MessageDeleted())
         async def client_message_delete_handler(event: events.MessageDeleted.Event):
