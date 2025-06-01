@@ -14,6 +14,20 @@ DEFAULT_KEY_SCHEMA = [
 DEFAULT_ATTRIBUTE_DEFINITIONS = [
     {"AttributeName": "chatId", "AttributeType": "N"},
     {"AttributeName": "messageId", "AttributeType": "N"},
+    {'AttributeName': 'timestamp', 'AttributeType': 'N'},
+]
+
+DEFAULT_SECONDARY_INDEXES = [
+    {
+        "IndexName": "chatId-timestamp-index",
+        "KeySchema": [
+            {"AttributeName": "chatId", "KeyType": "HASH"},
+            {"AttributeName": "timestamp", "KeyType": "RANGE"},
+        ],
+        "Projection": {
+            "ProjectionType": "ALL"
+        },
+    }
 ]
 
 
@@ -70,19 +84,22 @@ class AWSClient:
                 self._logger.warning(f"Bucket {bucket_name} already exists: {e}")
 
     async def create_dynamo_table(self, table_name: str = None, key_schema: list = None,
-                                  attribute_definitions: list = None):
+                                  attribute_definitions: list = None, global_secondary_indexes: list = None):
         if table_name is None:
             table_name = self._cfg.dynamo_table_name
         if attribute_definitions is None:
             attribute_definitions = DEFAULT_ATTRIBUTE_DEFINITIONS
         if key_schema is None:
             key_schema = DEFAULT_KEY_SCHEMA
+        if global_secondary_indexes is None:
+            global_secondary_indexes = DEFAULT_SECONDARY_INDEXES
         async with self._session.client('dynamodb') as client:
             try:
                 await client.create_table(
                     TableName=table_name,
                     KeySchema=key_schema,
                     AttributeDefinitions=attribute_definitions,
+                    GlobalSecondaryIndexes=global_secondary_indexes,
                     BillingMode="PAY_PER_REQUEST",
                 )
                 while True:
