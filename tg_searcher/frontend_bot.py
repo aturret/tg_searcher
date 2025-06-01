@@ -98,12 +98,17 @@ class BotFrontend:
         self.download_arg_parser.add_argument(
             "--cloud",
             action="store_true",
-            help="Enable cloud upload after download"
+            help="Enable cloud upload with indexing"
         )
         self.download_arg_parser.add_argument(
             "--archive",
             action="store_true",
-            help="Enable cloud upload after download"
+            help="Only upload to cloud"
+        )
+        self.download_arg_parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            help="overwrite existing cloud data if upload to cloud"
         )
         self.download_arg_parser.add_argument('chats', type=str, nargs='*')
 
@@ -233,12 +238,23 @@ class BotFrontend:
             if args.archive:
                 cloud = True
                 skip_indexing = True
+            skip_existing = True
+            if args.overwrite:
+                skip_existing = False
             if not chat_ids:
                 await event.reply(f'错误：请至少指定一个会话')
                 return
             for chat_id in chat_ids:
                 self._logger.info(f'start downloading history of {chat_id} (min={min_id}, max={max_id})')
-                await self._download_history(event, chat_id, min_id, max_id, cloud=cloud, skip_indexing=skip_indexing)
+                await self._download_history(
+                    event,
+                    chat_id,
+                    min_id,
+                    max_id,
+                    cloud=cloud,
+                    skip_indexing=skip_indexing,
+                    skip_existing=skip_existing
+                )
                 self._logger.info(f'succeed downloading history of {chat_id} (min={min_id}, max={max_id})')
 
         elif text.startswith('/monitor_chat'):
@@ -330,7 +346,7 @@ class BotFrontend:
             self._redis.set(f'{self.id}:query_chats:{event.chat_id}:{msg.id}', ','.join(map(str, chats)))
 
     async def _download_history(self, event: events.NewMessage.Event, chat_id: int, min_id: int, max_id: int,
-                                cloud: bool = False, skip_indexing: bool = False):
+                                cloud: bool = False, skip_indexing: bool = False, skip_existing: bool = False):
         chat_html = await self.backend.format_dialog_html(chat_id)
         if min_id == 1 and max_id == 1 << 31 - 1 and not self.backend.is_empty(chat_id) and not skip_indexing:
             # TODO: automatically handle message duplication
@@ -360,7 +376,7 @@ class BotFrontend:
             cnt += 1
 
         await self.backend.download_history(chat_id, min_id, max_id, cloud=cloud, call_back=call_back,
-                                            skip_indexing=skip_indexing)
+                                            skip_indexing=skip_indexing, skip_existing=skip_existing)
         await event.reply(f'{chat_html} 下载完成，共计 {cnt} 条消息', parse_mode='html')
         if prog_msg:
             await prog_msg.delete()
@@ -423,10 +439,11 @@ class BotFrontend:
             exit(-1)
 
         admin_commands = [
-            BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [--cloud] [--archive] [CHAT...] '
+            BotCommand(command="download_chat", description='[--min=MIN] [--max=MAX] [--cloud] [--archive] [--overwrite] [CHAT...] '
                                                             '下载并索引会话的历史消息，并将其加入监听列表。'
                                                             '如果添加 --cloud 则会同时将消息上传到云端。'
-                                                            '如果添加 --archive 则会无视当前索引情况仅将消息上传到云端'),
+                                                            '如果添加 --archive 则会无视当前索引情况仅将消息上传到云端'
+                                                            '如果添加 --overwrite 则会在上传云端时无视已有记录重新进行覆写上传'),
             BotCommand(command="monitor_chat", description='CHAT... 将会话加入监听列表'),
             BotCommand(command="stat", description='查询后端索引状态'),
             BotCommand(command="clear", description='[CHAT...] 清除索引'),

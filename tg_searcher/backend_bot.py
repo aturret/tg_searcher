@@ -80,14 +80,14 @@ class BackendBot:
             return self._indexer.ix.is_empty()
 
     async def download_history(self, chat_id: int, min_id: int, max_id: int, cloud: bool = False,
-                               call_back=None, skip_indexing: bool = False):
+                               call_back=None, skip_indexing: bool = False, skip_existing: bool = True):
         share_id = get_share_id(chat_id)
         self._logger.info(f'Downloading history from {share_id} ({min_id=}, {max_id=})')
         self.monitored_chats.add(share_id)
         msg_list = []
         async for tg_message in self.session.iter_messages(chat_id, min_id=min_id, max_id=max_id):
             if cloud:
-                await self.cloud_upload_message(tg_message)
+                await self.cloud_upload_message(tg_message, skip_existing)
             if msg_text := self._extract_text(tg_message) and not skip_indexing:
                 url = f'https://t.me/c/{share_id}/{tg_message.id}'
                 sender = await self._get_sender_name(tg_message)
@@ -290,6 +290,8 @@ class BackendBot:
                     fwd_from = message.fwd_from.from_id.user_id
                 telegram_message.fwd_from = fwd_from
                 telegram_message.is_forward = True
+            else:
+                telegram_message.is_forward = False
 
             # upload media to cloud storage
             file_name = ""
