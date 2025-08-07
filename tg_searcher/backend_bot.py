@@ -96,7 +96,8 @@ class BackendBot:
         async for tg_message in self.session.iter_messages(chat_id, min_id=min_id, max_id=max_id):
             if cloud:
                 await self.cloud_upload_message(tg_message, skip_existing)
-            if msg_text := self._extract_text(tg_message) and not skip_indexing:
+            msg_text = self._extract_text(tg_message)
+            if msg_text and not skip_indexing:
                 url = f'https://t.me/c/{share_id}/{tg_message.id}'
                 sender = await self._get_sender_name(tg_message)
                 msg = IndexMsg(
